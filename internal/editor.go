@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -9,6 +11,9 @@ import (
 
 // DefaultEditor is vi because we're adults ;)
 const DefaultEditor = "vi"
+
+// Template ...
+const Template = "# Add Comments"
 
 // PreferredEditorResolver is a function that returns an editor that the user
 // prefers to use, such as the configured `$EDITOR` environment variable.
@@ -83,14 +88,14 @@ func CaptureInputFromEditor(resolveEditor PreferredEditorResolver) ([]byte, erro
 		return []byte{}, err
 	}
 
+	fmt.Println(string(bytes))
+	if Template == string(bytes) {
+		return []byte{}, errors.New("No Content")
+	}
+
 	return bytes, nil
 }
 
-// func writeTemplateToFile(file *os.File, filename string) {
-// 	template := `Log Entry: %s
-// When:
-// Who:
-// Comments:
-// `
-// 	file.WriteString(fmt.Sprintf(template, time.Now()))
-// }
+func writeTemplateToFile(file *os.File, filename string) {
+	file.WriteString(Template)
+}

@@ -16,14 +16,20 @@ limitations under the License.
 package cmd
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
+	"os"
+	"path"
+	"time"
 
 	"github.com/go-zaru/minutes/internal"
 	"github.com/spf13/cobra"
 )
 
 // LogEditFileName ...
-const LogEditFileName = "LOG_EDIT"
+const LogDirName = ".mins"
+const LogFileName = "logs"
 const isoDateFormat = "2006-01-02"
 const isoDateTimeFormat = "2006-01-02T15:04:05-0700"
 
@@ -34,70 +40,37 @@ var logCmd = &cobra.Command{
 	Long:  `Helps log decisions for later records, NSTF`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		editorBytes, err := internal.CaptureInputFromEditor(
+		// Get Data and Buf
+		buf := bytes.NewBuffer(nil)
+		buf.WriteString(fmt.Sprintln("===", time.Now().Format(isoDateTimeFormat)))
+		tags, _ := internal.PromptString("Tags")
+		buf.WriteString(fmt.Sprintln("[tags]", tags))
+		who, _ := internal.PromptString("Who")
+		buf.WriteString(fmt.Sprintln("[who]", who))
+		comments, err := internal.CaptureInputFromEditor(
 			internal.GetPreferredEditorFromEnvironment,
 		)
+		buf.WriteString(fmt.Sprintln("[comments:start]"))
+		buf.Write(comments)
+		buf.WriteString(fmt.Sprintln("[comments:end]"))
+		buf.WriteString(fmt.Sprintln(""))
 
-		// buf := bytes.NewBuffer(nil)
-		// consoleReader := bufio.NewReader(os.Stdin)
+		homedir, err := os.UserHomeDir()
+		// Create logdir and file
+		logdir := path.Join(homedir, LogDirName)
+		os.Mkdir(logdir, os.ModePerm)
+		d := time.Now().Format(isoDateFormat)
+		filepath := path.Join(logdir, d)
+		logFile, err := os.OpenFile(filepath, os.O_APPEND|os.O_RDWR|os.O_CREATE, os.ModePerm)
+		defer logFile.Close()
+		// Write to file
+		writer := bufio.NewWriter(logFile)
+		buf.WriteTo(writer)
+		err = writer.Flush()
 
-		// now := time.Now()
-		// now.Format(isoDateFormat)
-
-		// fmt.Println("When:")
-		// text, _ := consoleReader.ReadString('\n')
-		// buf.WriteString(text)
-
-		// fmt.Println("Who:")
-		// text, _ := consoleReader.ReadString('¥')
-
-		fmt.Println(editorBytes)
-		fmt.Println(err)
-		// When
-		// Who
-		// Comments
-
-		// Create Log Directory
-		// logDir := time.Now().Format(isoDateFormat)
-		// os.Mkdir(logDir, os.ModePerm)
-		// Create Scratch File Path
-		// fp := path.Join(logDir, LogEditFileName)
-		// consoleReader := bufio.NewReader(os.Stdin)
-		// text, _ := consoleReader.ReadString('\n')
-		// fmt.Println(text)
-		// // Create command to start vi with scratch file
-		// // can I use a Channel here?
-		// vi := exec.Command("vi", fp)
-		// vi.Stdin = os.Stdin
-		// vi.Stdout = os.Stdout
-		// err := vi.Run()
-		// // Waits to completion
-		// fpl := path.Join(logDir, "log")
-		// logFile, err := os.OpenFile(fpl, os.O_APPEND|os.O_RDWR|os.O_CREATE, os.ModePerm)
-		// fmt.Println(err)
-
-		// defer logFile.Close()
-		// writer := bufio.NewWriter(logFile)
-
-		// // Gather Meta
-		// buf := bytes.NewBuffer(nil)
-		// timestring := time.Now().Format(isoDateTimeFormat)
-		// buf.WriteString("===\n")
-		// buf.WriteString(fmt.Sprintf("%s\n", timestring))
-		// buf.WriteString("---\n")
-		// buf.WriteString("\n")
-		// buf.WriteTo(writer)
-		// buf.WriteString("\n")
-		// buf.WriteString("===\n")
-		// buf.WriteString("\n")
-
-		// // Gather Content
-		// logByte, err := ioutil.ReadFile(fp)
-		// buf.Write(logByte)
-		// buf.WriteString("\n")
-		// buf.WriteTo(writer)
-		// err = writer.Flush()
-		// fmt.Println(err)
+		if err != nil {
+			fmt.Println(err)
+		}
 	},
 }
 
